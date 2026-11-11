@@ -1,3 +1,5 @@
+<img src=".claude-plugin/icon.png" width="96" align="right" alt="">
+
 # youtube-watch-skill
 
 **설치 없이 AI 에이전트가 YouTube 를 "보게" 하는 스킬입니다. 자막·캡처·검색을 지원합니다.** · [English](README.md)

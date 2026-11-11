@@ -1,3 +1,5 @@
+<img src=".claude-plugin/icon.png" width="96" align="right" alt="">
+
 # youtube-watch-skill
 
 **Let your AI agent watch YouTube: transcript + screenshots + search, with zero installs.** · [한국어](README.ko.md)
