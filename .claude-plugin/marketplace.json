@@ -1,0 +1,16 @@
+{
+  "name": "youtube-watch-skill",
+  "owner": {
+    "name": "FRe2Hug"
+  },
+  "metadata": {
+    "description": "youtube-watch-skill: let your AI agent watch YouTube with zero installs"
+  },
+  "plugins": [
+    {
+      "name": "youtube-watch-skill",
+      "source": "./",
+      "description": "YouTube transcript + scene screenshots + index + search in one self-contained binary. No Python/pip/brew. Whisper fallback (Groq/OpenAI) for videos without captions."
+    }
+  ]
+}

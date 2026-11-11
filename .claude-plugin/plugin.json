@@ -1,0 +1,12 @@
+{
+  "name": "youtube-watch-skill",
+  "version": "2.0.0",
+  "description": "Let your AI agent watch YouTube: transcript + scene-change screenshots + an index tying each screenshot to what is said, plus YouTube search. One self-contained binary per OS (yt-dlp, ffmpeg, deno inside) - no Python, pip, brew or PATH changes. Whisper speech-to-text via Groq/OpenAI when a video has no captions.",
+  "author": {
+    "name": "FRe2Hug"
+  },
+  "homepage": "https://github.com/FRe2Hug/youtube-watch-skill",
+  "repository": "https://github.com/FRe2Hug/youtube-watch-skill",
+  "license": "MIT",
+  "keywords": ["youtube", "watch", "video", "transcript", "subtitles", "screenshots", "frames", "search", "whisper", "yt-dlp", "ffmpeg", "agent-skills", "no-install"]
+}

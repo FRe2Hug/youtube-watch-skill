@@ -1,0 +1,123 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "skills/**", ".claude-plugin/**", "assets/**", ".gitattributes"]
+  schedule:
+    - cron: "0 18 * * 0"   # every Monday 03:00 KST, picks up the newest yt-dlp
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: ytwatch-windows-x64.exe
+            ffmpeg: https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip
+            deno: deno-x86_64-pc-windows-msvc.zip
+            ext: .exe
+          - os: macos-latest
+            asset: ytwatch-macos-arm64
+            ffmpeg: gh:jellyfin/jellyfin-ffmpeg:*_portable_macarm64-gpl.tar.xz
+            deno: deno-aarch64-apple-darwin.zip
+            ext: ""
+          - os: ubuntu-22.04
+            asset: ytwatch-linux-x64
+            ffmpeg: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+            deno: deno-x86_64-unknown-linux-gnu.zip
+            ext: ""
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -U "yt-dlp[default]" pyinstaller
+
+      - name: Fetch ffmpeg and deno
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          url="${{ matrix.ffmpeg }}"
+          case "$url" in
+            gh:*) spec="${url#gh:}"; gh release download --repo "${spec%%:*}" --pattern "${spec#*:}" -O ff.dl.tar.xz; url=ff.dl.tar.xz ;;
+            *) curl -fsSL --retry 5 --retry-all-errors -o "ff.${url##*/}" "$url" ;;
+          esac
+          mkdir ff
+          case "$url" in
+            *.zip) unzip -q ff.*.zip -d ff ;;
+            *.tar.xz) tar -xJf ff.*.tar.xz -C ff ;;
+            *.gz) gunzip -c ff.*.gz > ff/ffmpeg ;;
+          esac
+          cp "$(find ff -type f -name 'ffmpeg${{ matrix.ext }}' | head -1)" .
+          curl -fsSL --retry 5 --retry-all-errors -o deno.zip \
+            "https://github.com/denoland/deno/releases/latest/download/${{ matrix.deno }}"
+          unzip -q -o deno.zip -d .
+          chmod +x ffmpeg${{ matrix.ext }} deno${{ matrix.ext }}
+          ./ffmpeg${{ matrix.ext }} -hide_banner -version | head -1
+          # a --enable-nonfree FFmpeg may not be redistributed: refuse to ship one
+          if ./ffmpeg${{ matrix.ext }} -hide_banner -buildconf | grep -q -- --enable-nonfree; then
+            echo "::error::this FFmpeg build has --enable-nonfree and cannot be redistributed"; exit 1
+          fi
+
+      - name: Build
+        run: |
+          pyinstaller --onefile --name ytwatch \
+            --add-binary "ffmpeg${{ matrix.ext }}:." --add-binary "deno${{ matrix.ext }}:." \
+            --collect-all yt_dlp_ejs --collect-data certifi \
+            ytwatch.py
+          [ "dist/ytwatch${{ matrix.ext }}" = "dist/${{ matrix.asset }}" ] || mv "dist/ytwatch${{ matrix.ext }}" "dist/${{ matrix.asset }}"
+
+      - name: Test - version and selftest (offline)
+        run: |
+          dist/${{ matrix.asset }} --version
+          dist/${{ matrix.asset }} selftest
+
+      - name: Test - YouTube (runner IPs are often blocked)
+        continue-on-error: true
+        run: |
+          if dist/${{ matrix.asset }} search "blender tutorial" -n 3 && \
+             dist/${{ matrix.asset }} "https://www.youtube.com/watch?v=jNQXAC9IVRw" --subs-only -o yt-test; then
+            echo "YouTube: ok"
+          else
+            echo "::warning title=YouTube blocked on ${{ matrix.os }}::search/subs test could not reach YouTube from this runner"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(pip download --no-deps -q yt-dlp -d /tmp/y >/dev/null && ls /tmp/y | sed -E 's/yt_dlp-([^-]+)-.*/\1/')
+          chmod +x dist/ytwatch-*
+          gh release create "v${{ github.run_number }}" dist/* THIRD_PARTY_NOTICES.md LICENSE \
+            --title "v${{ github.run_number }} (yt-dlp $v)" --notes "yt-dlp $v, commit ${{ github.sha }}"
+          # keep the newest 3 releases
+          gh release list --limit 100 --json tagName --jq '.[3:][].tagName' | while read t; do gh release delete "$t" --yes --cleanup-tag; done
