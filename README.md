@@ -4,6 +4,10 @@
 
 **Let your AI agent watch YouTube: transcript + screenshots + search, with zero installs.** · [한국어](README.ko.md)
 
+Most YouTube tools for agents only read the transcript. **ytwatch also sees the screen**: slides, code, diagrams, UI steps and on-screen numbers that are never said out loud.
+
+![ytwatch output: scene screenshots, each paired with the line spoken at that moment](docs/demo.png)
+
 An Agent Skill for Claude Code (and other Agent Skills hosts). Give your agent a YouTube link and it gets:
 
 - `transcript.txt`: `[mm:ss] line`. Manual subtitles in the spoken language first (or the one you pick with `--lang`), then English, then any other; otherwise auto-captions in the spoken language. Machine-translated and auto-dubbed tracks are skipped.

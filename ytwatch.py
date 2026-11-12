@@ -333,6 +333,8 @@ def run(args):
                 said = next((l for s, e, l in cues if s <= t < e), "")
                 if not said:  # nearest line before
                     said = next((l for s, e, l in reversed(cues) if s <= t), "")
+                if not said:  # frame before the first line (e.g. 00:00): line starting within 5 s
+                    said = next((l for s, e, l in cues if t < s <= t + 5), "")
                 f.write(f"{name}\t[{ts(t)}]\t{said}\n")
 
     hint = "" if cues or args.no_asr or any(os.environ.get(k) for k, *_ in ASR) else \
